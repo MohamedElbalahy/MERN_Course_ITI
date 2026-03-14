@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Weather Query Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="widget-container">
+        <h1>Weather Query</h1>
+        
+        <div>
+            <input type="text" id="place-input" placeholder="Enter location...">
+            <button id="fetch-btn">Search</button>
+        </div>
+
+        <div id="loader-anim" class="loader" style="display: none;"></div>
+        
+        <div id="error-alert" class="error" style="display: none;">Location not found. Please try again.</div>
+
+        <div id="climate-result" class="weather-display" style="display: none;">
+            <h2 id="show-location">City, Country</h2>
+            <div class="coords" id="show-coords">Lat: 0, Lon: 0</div>
+            <div class="temp" id="show-temp">--°C</div>
+            <div id="show-condition" style="font-size: 1.2rem; margin-bottom: 5px;">Condition</div>
+            <div id="show-wind" style="color: #555;">Wind: -- m/s</div>
+        </div>
+    </div>
+
+    <script>
+        const OPENWEATHER_TOKEN = 'c568967e170709db85d52b4dfc16945b'; 
+
+        const fetchButton = document.getElementById('fetch-btn');
+        const placeField = document.getElementById('place-input');
+        const climateContainer = document.getElementById('climate-result');
+        const loaderAnim = document.getElementById('loader-anim');
+        const errorAlert = document.getElementById('error-alert');
+
+        async function retrieveClimate(searchQuery) {
+            try {
+                const requestUrl = `https://api.openweathermap.org/data/2.5/weather?q=${searchQuery}&appid=${OPENWEATHER_TOKEN}`;
+                const apiResponse = await fetch(requestUrl);
+
+                if (!apiResponse.ok) {
+                    throw new Error('Location query failed');
+                }
+                return await apiResponse.json(); 
+
+            } catch (err) {
+                console.error("API Error:", err);
+                return null; 
+            }
+        }
+
+        function extractUsefulStats(jsonPayload) {
+            return {
+                townName: jsonPayload.name,
+                nation: jsonPayload.sys.country,
+                temperatureC: Math.round(jsonPayload.main.temp - 273.15),
+                weatherState: jsonPayload.weather[0].main,
+                windVelocity: jsonPayload.wind.speed,
+                latCoord: jsonPayload.coord.lat,
+                lonCoord: jsonPayload.coord.lon
+            };
+        }
+
+        function updateUI(statsObj) {
+            document.getElementById('show-location').textContent = `${statsObj.townName}, ${statsObj.nation}`;
+            document.getElementById('show-coords').textContent = `Lat: ${statsObj.latCoord}, Lon: ${statsObj.lonCoord}`;
+            document.getElementById('show-temp').textContent = `${statsObj.temperatureC}°C`;
+            document.getElementById('show-condition').textContent = statsObj.weatherState;
+            document.getElementById('show-wind').textContent = `Wind: ${statsObj.windVelocity} m/s`;
+            
+            climateContainer.style.display = 'block';
+        }
+
+        fetchButton.addEventListener('click', async () => {
+            const enteredPlace = placeField.value;
+            
+            if (!enteredPlace) return;
+
+            climateContainer.style.display = 'none';
+            errorAlert.style.display = 'none';
+            loaderAnim.style.display = 'block'; 
+
+            const fetchedData = await retrieveClimate(enteredPlace);
+            
+            loaderAnim.style.display = 'none';
+
+            if (fetchedData) {
+                const weatherStats = extractUsefulStats(fetchedData);
+                
+                console.log("Here is the weather data object:", weatherStats);
+                
+                updateUI(weatherStats);
+            } else {
+                errorAlert.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
